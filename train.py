@@ -4,30 +4,22 @@ import torch.nn as nn
 import torch.nn.functional as F
 import os
 import torchvision.models as models
-import time
-import matplotlib.pyplot as plt
-import cv2
-from PIL import Image
-
-
-batch_size = 4
-learning_rate = 1e-4
-epoches = 100
-
-num_type = {0:"blight",
-            1:"common_rust",
-            2:"gray_leaf_spot",
-            3:"healthy"}
-
-# 加载数据集
 import torchvision.datasets as dsets
 import torchvision.transforms as transforms
+from torch.autograd import Variable
+import time
 
-trainpath = './dataset/train/'
-valpath = './dataset/val/'
+# 预设参数
+batch_size = 4
+learning_rate = 1e-4  # 学习率
+epoches = 100  # 训练轮次
 
 
-traintransform = transforms.Compose([
+# 加载数据集
+train_path = './dataset/train/'  # 训练集的路径
+val_path = './dataset/val/'  # 验证集的路径
+
+train_transform = transforms.Compose([
     transforms.RandomRotation(20),  # optional
     transforms.ColorJitter(brightness=0.1),
     transforms.Resize([224, 224]),
@@ -36,18 +28,18 @@ traintransform = transforms.Compose([
     #                      std=[0.229, 0.224, 0.225]),
 ])
 
-valtransform = transforms.Compose([
+val_transform = transforms.Compose([
     transforms.Resize([224, 224]),
     transforms.ToTensor(),  # 将图片数据变为tensor格式
 ])
 
-trainData = dsets.ImageFolder(trainpath, transform=traintransform)  # 读取训练集，标签就是train目录下的文件夹的名字，图像保存在格子标签下的文件夹里
-valData = dsets.ImageFolder(valpath, transform=valtransform)
+trainData = dsets.ImageFolder(train_path, transform=train_transform)  # 读取训练集，标签是train目录下的文件夹名称(0，1，2，3)
+valData = dsets.ImageFolder(val_path, transform=val_transform)  # 读取验证集，标签是test目录下的文件夹名称(0，1，2，3)
 
 trainLoader = torch.utils.data.DataLoader(dataset=trainData, batch_size=batch_size, shuffle=True)
 testLoader = torch.utils.data.DataLoader(dataset=valData, batch_size=batch_size, shuffle=False)
-val_sum = sum([len(x) for _, _, x in os.walk(os.path.dirname(valpath))])
-train_sum = sum([len(x) for _, _, x in os.walk(os.path.dirname(trainpath))])
+val_sum = sum([len(x) for _, _, x in os.walk(os.path.dirname(val_path))])
+train_sum = sum([len(x) for _, _, x in os.walk(os.path.dirname(train_path))])
 
 # 定义模型 以调用最简单的torchvision自带的resnet34为例
 
@@ -61,7 +53,6 @@ criterion = torch.nn.CrossEntropyLoss()  # 定义损失函数
 optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
 # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)  # 定义优化器
 
-from torch.autograd import Variable
 
 def train(model, optimizer, criterion):
     model.train()
@@ -107,52 +98,6 @@ def evaluate(model, criterion):
 
     return eval_loss / float(len(testLoader)), corrects, corrects / val_sum
 
-
-def predict():
-    best_model_path = './model/bestmodel.pth'
-    model = torch.load(best_model_path)
-    model = model.cuda()
-
-    # model = models.resnet34()
-    # model.load_state_dict(torch.load(best_model_path, map_location=lambda storage, loc: storage), strict=True) # 利用cpu进行测试
-
-    model.eval()
-
-    testLoader = torch.utils.data.DataLoader(dataset=valData, batch_size=1, shuffle=False)
-
-    for i, (image, label) in enumerate(testLoader):
-        image = Variable(image.cuda())  # 如果不使用GPU，删除.cuda()
-        # image = Variable(image)
-        pred = model(image)
-        max_value, max_index = torch.max(pred, 1)
-        pred_label = max_index.cpu().numpy()
-        print(max_value, pred_label)
-        # todo 预测显示
-        # text = num_type[pred_label[0]]
-        # img = transforms.ToPILImage(image)
-        # img.show()
-        # img = image.cpu().numpy()  # FloatTensor转为ndarray
-        # img_show = np.squeeze(img, 0)
-        # img_show = np.transpose(img_show, (1, 2, 0))  # 把channel那一维放到最后
-        # # 显示图片
-        # plt.imshow(img_show)
-        # plt.show()
-
-        # img = cv2.putText(img, text, (200, 100), cv2.FONT_HERSHEY_SIMPLEX, 2.0, (100, 200, 200), 5)
-        # cv2.imshow("output", img)
-        # cv2.waitKey(0)
-        """
-        probs = F.softmax(pred, dim=1)
-        # print("Sample probabilities: ", probs[:2].data.detach().cpu().numpy())
-        a, b = np.unravel_index(probs[:2].data.detach().cpu().numpy().argmax(),
-                                probs[:2].data.detach().cpu().numpy().shape)  # 索引最大值的位置   ###b就说预测的label
-        print(testLoader.dataset.imgs[i][0])
-
-        print('预测结果的概率:', round(probs[:2].data.detach().cpu().numpy()[0][b] * 100))
-        print("label:  "+str(b))
-        """
-
-
 def main():
     train_loss = []
     valid_loss = []
@@ -197,5 +142,4 @@ def main():
     # plt.show()
 
 if __name__ == '__main__':
-    # main()
-    predict()
+    main()
