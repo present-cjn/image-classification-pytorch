@@ -9,25 +9,24 @@ import torchvision.transforms as transforms
 from torch.autograd import Variable
 import time
 
-# 预设参数
+'''-------------------------预设参数-------------------------'''
 batch_size = 4
 learning_rate = 1e-4  # 学习率
 epoches = 100  # 训练轮次
-
-
-# 加载数据集
 train_path = './dataset/train/'  # 训练集的路径
 val_path = './dataset/val/'  # 验证集的路径
+use_gpu = True  # 是否使用gpu
 
+'''-------------------------数据加载-------------------------'''
+# 设定训练数据集的预处理方式
 train_transform = transforms.Compose([
-    transforms.RandomRotation(20),  # optional
+    transforms.RandomRotation(20),  # 随机旋转
     transforms.ColorJitter(brightness=0.1),
     transforms.Resize([224, 224]),
     transforms.ToTensor(),  # 将图片数据变为tensor格式
-    # transforms.Normalize(mean=[0.485, 0.456, 0.406],
-    #                      std=[0.229, 0.224, 0.225]),
 ])
 
+# 设定验证数据集的预处理方式
 val_transform = transforms.Compose([
     transforms.Resize([224, 224]),
     transforms.ToTensor(),  # 将图片数据变为tensor格式
@@ -36,25 +35,32 @@ val_transform = transforms.Compose([
 trainData = dsets.ImageFolder(train_path, transform=train_transform)  # 读取训练集，标签是train目录下的文件夹名称(0，1，2，3)
 valData = dsets.ImageFolder(val_path, transform=val_transform)  # 读取验证集，标签是test目录下的文件夹名称(0，1，2，3)
 
+# 按batch_size打包数据集
 trainLoader = torch.utils.data.DataLoader(dataset=trainData, batch_size=batch_size, shuffle=True)
 testLoader = torch.utils.data.DataLoader(dataset=valData, batch_size=batch_size, shuffle=False)
+
+# 记录训练集和验证集的总数，用于后面计算准确率
 val_sum = sum([len(x) for _, _, x in os.walk(os.path.dirname(val_path))])
 train_sum = sum([len(x) for _, _, x in os.walk(os.path.dirname(train_path))])
 
-# 定义模型 以调用最简单的torchvision自带的resnet34为例
+'''-------------------------模型定义-------------------------'''
+model = models.resnet34(weights=None)  # 模型用resnet34
+model.fc = torch.nn.Linear(512, 4)  # 将最后的fc层的输出改为标签数量（4）,512取决于原始网络fc层的输入通道
+if use_gpu:
+    model = model.cuda()  # 使用gpu进行加速
 
-model = models.resnet34(weights=None) #weights表示是否加载
-model.fc = torch.nn.Linear(512, 4) #将最后的fc层的输出改为标签数量（如3）,512取决于原始网络fc层的输入通道
-model = model.cuda()  # 如果有GPU，而且确认使用则保留；如果没有GPU，请删除
-
-# 定义损失函数和优化器
-criterion = torch.nn.CrossEntropyLoss()  # 定义损失函数
-
-optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)
-# optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)  # 定义优化器
+criterion = torch.nn.CrossEntropyLoss()  # 损失函数用交叉熵损失
+optimizer = torch.optim.Adam(model.parameters(), lr=learning_rate)  # 优化器用Adam
 
 
 def train(model, optimizer, criterion):
+    """
+    模型训练
+    :param model: 模型
+    :param optimizer: 优化器
+    :param criterion:
+    :return:
+    """
     model.train()
     total_loss = 0
     train_corrects = 0
@@ -83,8 +89,12 @@ def evaluate(model, criterion):
     corrects = eval_loss = 0
     with torch.no_grad():
         for image, label in testLoader:
-            image = Variable(image.cuda())  # 如果不使用GPU，删除.cuda()
-            label = Variable(label.cuda())  # 同理
+            if use_gpu:
+                image = Variable(image.cuda())
+                label = Variable(label.cuda())
+            else:
+                image = Variable(image)
+                label = Variable(label)
 
             pred = model(image)
             loss = criterion(pred, label)
@@ -97,6 +107,7 @@ def evaluate(model, criterion):
             corrects += np.sum(pred_label == true_label)
 
     return eval_loss / float(len(testLoader)), corrects, corrects / val_sum
+
 
 def main():
     train_loss = []

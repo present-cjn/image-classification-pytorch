@@ -19,8 +19,24 @@ val_transform = transforms.Compose([
     transforms.Resize([224, 224]),
     transforms.ToTensor(),  # 将图片数据变为tensor格式
 ])
+# 读取验证集，标签是test目录下的文件夹名称(0，1，2，3)
+valData = dsets.ImageFolder(val_path, transform=val_transform)
 
-valData = dsets.ImageFolder(val_path, transform=val_transform)  # 读取验证集，标签是test目录下的文件夹名称(0，1，2，3)
+
+# 显示结果图的函数
+def display(image, pred_label):
+    array1 = image.cpu().numpy()  # 将tensor数据转为numpy数据
+    array1 = np.squeeze(array1)  # 压缩第一个维度，将图片从[1, 3, 224, 224]变为[3, 224, 224]
+    array1 = array1 * 255 / array1.max()  # 图像归一化
+    mat = np.uint8(array1)  # 数据类型转换，float32-->uint8
+    mat = mat.transpose(1, 2, 0)  # 调整图像的维度值(224, 224，3)，用于显示
+    mat = cv2.cvtColor(mat, cv2.COLOR_RGB2BGR)  # opencv默认显示BGR，因此需要将mat从RGB变为BGR
+    # 将预测结果写到图片上
+    text = num_type[pred_label[0]]
+    mat = cv2.putText(mat, text, (20, 30), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 200), 1)
+    # 图像显示
+    cv2.imshow("img", mat)
+    cv2.waitKey()
 
 
 def predict(use_gpu: bool = True):
@@ -33,11 +49,12 @@ def predict(use_gpu: bool = True):
         model = model.cuda()
     else:
         model = torch.load(best_model_path, map_location=torch.device('cpu'))
-
     model.eval()
 
+    # 加载测试数据
     testLoader = torch.utils.data.DataLoader(dataset=valData, batch_size=1, shuffle=False)
 
+    # 迭代计算每张图片的预测值
     for i, (image, label) in enumerate(testLoader):
         if use_gpu:
             image = Variable(image.cuda())
@@ -48,32 +65,9 @@ def predict(use_gpu: bool = True):
         pred_label = max_index.cpu().numpy()
         print(max_value, pred_label)
         print(image.size())
-
-        # 显示结果
-        array1 = image.cpu().numpy()  # 将tensor数据转为numpy数据
-        array1 = np.squeeze(array1)
-        maxValue = array1.max()
-        array1 = array1 * 255 / maxValue  # normalize，
-        mat = np.uint8(array1)  # float32-->uint8
-        print('mat_shape:', mat.shape)  # mat_shape: (3, 982, 814)
-        mat = mat.transpose(1, 2, 0)  # mat_shape: (982, 814，3)
-        mat = cv2.cvtColor(mat, cv2.COLOR_RGB2BGR)
-        text = num_type[pred_label[0]]
-        mat = cv2.putText(mat, text, (20, 30), cv2.FONT_HERSHEY_COMPLEX, 0.5, (0, 0, 200), 1)
-        cv2.imshow("img", mat)
-        cv2.waitKey()
-
-        """
-        probs = F.softmax(pred, dim=1)
-        # print("Sample probabilities: ", probs[:2].data.detach().cpu().numpy())
-        a, b = np.unravel_index(probs[:2].data.detach().cpu().numpy().argmax(),
-                                probs[:2].data.detach().cpu().numpy().shape)  # 索引最大值的位置   ###b就说预测的label
-        print(testLoader.dataset.imgs[i][0])
-
-        print('预测结果的概率:', round(probs[:2].data.detach().cpu().numpy()[0][b] * 100))
-        print("label:  "+str(b))
-        """
+        # 显示预测结果图
+        display(image, pred_label)
 
 
 if __name__ == '__main__':
-    predict()
+    predict(use_gpu=True)
