@@ -1,25 +1,25 @@
 import cv2
 import torch
 import numpy as np
-import torchvision.models as models
 import torchvision.datasets as dsets
 import torchvision.transforms as transforms
 from torch.autograd import Variable
 
+'''-------------------------预设参数-------------------------'''
 # 类型代号和名称对应的字典(用于在图像显示，可自行修改)
 num_type = {0: "blight",
             1: "common_rust",
             2: "gray_leaf_spot",
             3: "healthy"}
+use_gpu = True  # 是否使用gpu
+val_path = './dataset/val/'  # 指定检测用的数据集路径
 
-# 指定检测用的数据集路径
-val_path = './dataset/val/'
-
+'''-------------------------数据加载-------------------------'''
 val_transform = transforms.Compose([
     transforms.Resize([224, 224]),
     transforms.ToTensor(),  # 将图片数据变为tensor格式
 ])
-# 读取验证集，标签是test目录下的文件夹名称(0，1，2，3)
+# 读取测试集，标签是目录下的文件夹名称(0，1，2，3)
 valData = dsets.ImageFolder(val_path, transform=val_transform)
 
 
@@ -39,7 +39,7 @@ def display(image, pred_label):
     cv2.waitKey()
 
 
-def predict(use_gpu: bool = True):
+def predict():
     # 指定模型的路径
     best_model_path = './model/bestmodel.pth'
 
@@ -70,4 +70,4 @@ def predict(use_gpu: bool = True):
 
 
 if __name__ == '__main__':
-    predict(use_gpu=True)
+    predict()

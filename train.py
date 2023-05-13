@@ -1,13 +1,12 @@
 import torch
 import numpy as np
-import torch.nn as nn
-import torch.nn.functional as F
 import os
 import torchvision.models as models
 import torchvision.datasets as dsets
 import torchvision.transforms as transforms
 from torch.autograd import Variable
 import time
+import matplotlib.pyplot as plt
 
 '''-------------------------预设参数-------------------------'''
 batch_size = 4
@@ -128,6 +127,8 @@ def main():
         valid_loss.append(loss)
         accuracy.append(acc)
 
+        if epoch % 10 == 0:
+            torch.save(model, save_model_path + 'model' + str(epoch) + '.pth')
         if acc > bestacc:
             torch.save(model, save_model_path + 'bestmodel.pth')
             bestacc = acc
@@ -136,21 +137,21 @@ def main():
 
 
     print("**********ending*********")
-    # plt.plot(train_loss)
-    # plt.plot(valid_loss)
-    # plt.title('loss')
-    # plt.ylabel('loss')
-    # plt.xlabel('epoch')
-    # plt.legend(['train', 'test'], loc='upper left')
-    # plt.savefig("./loss.jpg")
-    # # plt.show()
-    # plt.cla()
-    # plt.plot(accuracy)
-    # plt.title('acc')
-    # plt.ylabel('acc')
-    # plt.xlabel('epoch')
-    # plt.savefig("./acc.jpg")
+    plt.plot(train_loss)
+    plt.plot(valid_loss)
+    plt.title('loss')
+    plt.ylabel('loss')
+    plt.xlabel('epoch')
+    plt.legend(['train', 'test'], loc='upper left')
+    plt.savefig("./loss.jpg")
     # plt.show()
+    plt.cla()
+    plt.plot(accuracy)
+    plt.title('acc')
+    plt.ylabel('acc')
+    plt.xlabel('epoch')
+    plt.savefig("./acc.jpg")
+    plt.show()
 
 if __name__ == '__main__':
     main()
